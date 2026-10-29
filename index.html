@@ -1,0 +1,952 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Wall Street Trader Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.321.0/dist/umd/lucide.min.js"></script>
+  <style>
+    * { touch-action: manipulation; }
+    body { background-color: #0b0f17; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #60a5fa; font-weight: 600; }
+    .cat-active { background-color: #1e293b; color: #60a5fa; font-weight: 600; }
+  </style>
+</head>
+<body class="h-[100dvh] w-screen flex flex-col overflow-hidden text-xs select-none">
+
+  <!-- TOP HEADER / STATS BAR -->
+  <header class="h-11 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 font-bold text-blue-400 text-sm">
+        <i data-lucide="candlestick-chart" class="w-5 h-5"></i>
+        <span>TRADER PRO</span>
+      </div>
+      <button id="toggleLeftSidebar" class="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white">
+        <i data-lucide="panel-left" class="w-4 h-4"></i>
+      </button>
+      <div class="bg-slate-800/80 px-2 py-0.5 rounded text-[10px] text-slate-300 font-mono">
+        DAY <span id="statDay">1</span> | <span id="statClock">09:30 AM</span>
+      </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="flex items-center gap-4 text-[11px]">
+      <div>
+        <span class="text-slate-400">Equity:</span>
+        <span id="statPortfolio" class="font-semibold text-white ml-1">$25,000.00</span>
+      </div>
+      <div class="hidden sm:block">
+        <span class="text-slate-400">Cash:</span>
+        <span id="statCash" class="font-semibold text-white ml-1">$25,000.00</span>
+      </div>
+      <div class="hidden md:block">
+        <span class="text-slate-400">Buying Power:</span>
+        <span id="statBuyingPower" class="font-semibold text-emerald-400 ml-1">$25,000.00</span>
+      </div>
+      <div>
+        <span class="text-slate-400">Margin Health:</span>
+        <span id="statMarginHealth" class="font-semibold text-emerald-400 ml-1">100%</span>
+      </div>
+      <div>
+        <span class="text-slate-400">Day P&L:</span>
+        <span id="statDayPnL" class="font-semibold text-emerald-400 ml-1">+$0.00 (0.00%)</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btnPause" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] font-mono text-slate-300">Pause [P]</button>
+      <button id="btnSpeed" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] font-mono text-slate-300">1x Speed</button>
+      <button id="toggleRightSidebar" class="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white">
+        <i data-lucide="panel-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT WATCHLIST SIDEBAR -->
+    <aside id="leftSidebar" class="w-52 bg-slate-900/90 border-r border-slate-800 flex flex-col shrink-0 transition-all duration-200">
+      <div class="p-2 border-b border-slate-800 flex justify-between items-center">
+        <span class="font-semibold text-slate-400 text-[10px] uppercase tracking-wider">Markets</span>
+        <span class="text-[9px] text-emerald-400 font-mono">LIVE</span>
+      </div>
+      
+      <!-- Category Tabs -->
+      <div class="grid grid-cols-4 gap-0.5 p-1 bg-slate-950 text-[9px] font-semibold border-b border-slate-800">
+        <button class="cat-btn cat-active py-1 rounded text-center text-slate-300" data-cat="ALL">ALL</button>
+        <button class="cat-btn py-1 rounded text-center text-slate-400" data-cat="STOCKS">STOCKS</button>
+        <button class="cat-btn py-1 rounded text-center text-slate-400" data-cat="CRYPTO">CRYPTO</button>
+        <button class="cat-btn py-1 rounded text-center text-slate-400" data-cat="MEME">🔥 MEMES</button>
+      </div>
+
+      <div id="watchlistContainer" class="flex-1 overflow-y-auto divide-y divide-slate-800/50">
+        <!-- Watchlist dynamic content -->
+      </div>
+    </aside>
+
+    <!-- CENTER CHART & BOTTOM PANELS -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-950">
+      
+      <!-- CHART TOOLBAR & SYMBOL INFO -->
+      <div class="h-10 border-b border-slate-800 px-3 flex items-center justify-between bg-slate-900/50">
+        <div class="flex items-center gap-3">
+          <span id="chartSymbol" class="font-bold text-sm text-white">TECH</span>
+          <span id="chartName" class="text-slate-400 text-[11px] hidden sm:inline">MegaTech Corp</span>
+          <span id="chartPrice" class="font-mono text-emerald-400 font-semibold">$150.00</span>
+          <span id="chartBidAsk" class="font-mono text-[10px] text-slate-400 hidden md:inline">B: 149.98 / A: 150.02</span>
+          <span id="chartChange" class="font-mono text-emerald-400 text-[11px]">+0.00%</span>
+        </div>
+
+        <!-- Indicator Toggles -->
+        <div class="flex items-center gap-1.5 text-[10px]">
+          <button id="btnEma9" class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">EMA 9</button>
+          <button id="btnEma21" class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">EMA 21</button>
+          <button id="btnSma50" class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">SMA 50</button>
+          <button id="btnVwap" class="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/40">VWAP</button>
+          <button id="btnBoll" class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">BOLL</button>
+        </div>
+      </div>
+
+      <!-- MAIN CANVAS CHART AREA -->
+      <div class="flex-1 relative min-h-[180px] flex flex-col">
+        <div class="flex-1 relative">
+          <canvas id="chartCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+        </div>
+        <!-- RSI Subchart -->
+        <div class="h-20 border-t border-slate-800/80 relative shrink-0">
+          <canvas id="rsiCanvas" class="w-full h-full block"></canvas>
+          <div class="absolute top-1 left-2 text-[9px] font-mono text-slate-500">RSI (14)</div>
+        </div>
+      </div>
+
+      <!-- BOTTOM DASHBOARD TABS -->
+      <div class="h-36 border-t border-slate-800 flex flex-col bg-slate-900/70">
+        <div class="flex border-b border-slate-800 bg-slate-900 text-[11px] justify-between items-center pr-2">
+          <div class="flex">
+            <button class="tab-btn tab-active px-3 py-1.5" data-tab="positions">Open Positions (<span id="posCount">0</span>)</button>
+            <button class="tab-btn px-3 py-1.5 text-slate-400" data-tab="pending">Pending Orders (<span id="pendingCount">0</span>)</button>
+            <button class="tab-btn px-3 py-1.5 text-slate-400" data-tab="history">Trade History</button>
+            <button class="tab-btn px-3 py-1.5 text-slate-400" data-tab="news">Catalysts & Wire</button>
+          </div>
+          <button id="btnFlattenAll" class="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded text-[10px] tracking-wider">
+            FLATTEN ALL [SPACE]
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-auto p-2">
+          <!-- POSITIONS TAB -->
+          <div id="tab-positions" class="tab-content">
+            <table class="w-full text-left font-mono text-[11px]">
+              <thead class="text-slate-400 border-b border-slate-800 pb-1">
+                <tr>
+                  <th class="p-1">Symbol</th>
+                  <th class="p-1">Side</th>
+                  <th class="p-1">Qty</th>
+                  <th class="p-1">Entry</th>
+                  <th class="p-1">Mark</th>
+                  <th class="p-1">P&L ($)</th>
+                  <th class="p-1">Stop / TP</th>
+                  <th class="p-1">Action</th>
+                </tr>
+              </thead>
+              <tbody id="positionsTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- PENDING ORDERS TAB -->
+          <div id="tab-pending" class="tab-content hidden">
+            <table class="w-full text-left font-mono text-[11px]">
+              <thead class="text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="p-1">Symbol</th>
+                  <th class="p-1">Side</th>
+                  <th class="p-1">Target Price</th>
+                  <th class="p-1">Qty</th>
+                  <th class="p-1">Action</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- HISTORY TAB -->
+          <div id="tab-history" class="tab-content hidden">
+            <table class="w-full text-left font-mono text-[11px]">
+              <thead class="text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="p-1">Time</th>
+                  <th class="p-1">Symbol</th>
+                  <th class="p-1">Side</th>
+                  <th class="p-1">Price</th>
+                  <th class="p-1">Qty</th>
+                  <th class="p-1">Realized P&L</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- NEWS TAB -->
+          <div id="tab-news" class="tab-content hidden flex flex-col gap-1">
+            <!-- News Feed -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT ORDER EXECUTION PANEL -->
+    <aside id="rightSidebar" class="w-56 bg-slate-900 border-l border-slate-800 p-3 flex flex-col gap-3 shrink-0">
+      <div class="font-bold text-xs uppercase tracking-wider text-slate-400 flex justify-between items-center">
+        <span>Execution</span>
+        <span class="text-[9px] text-slate-500 font-mono">Hotkey Active</span>
+      </div>
+
+      <!-- Order Type Switcher -->
+      <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded border border-slate-800">
+        <button id="btnOrderMarket" class="py-1 rounded bg-slate-800 text-white text-[10px] font-semibold">Market</button>
+        <button id="btnOrderLimit" class="py-1 rounded text-slate-400 text-[10px] font-semibold">Limit</button>
+      </div>
+
+      <!-- Limit Price Input -->
+      <div id="limitPriceContainer" class="hidden">
+        <label class="text-[10px] text-slate-400 mb-1 block">Limit Price ($)</label>
+        <input type="number" id="inputLimitPrice" step="any" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-white text-xs" placeholder="0.00">
+      </div>
+
+      <!-- Quantity / Amount Inputs -->
+      <div>
+        <div class="flex justify-between text-[10px] text-slate-400 mb-1">
+          <span>Shares Qty</span>
+          <span id="orderEstValue" class="font-mono text-slate-300">$0.00</span>
+        </div>
+        <input type="number" id="inputQty" min="1" value="10" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-white text-xs">
+        
+        <!-- Quick % Selectors -->
+        <div class="grid grid-cols-4 gap-1 mt-1.5">
+          <button class="btn-pct py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[9px] font-mono text-slate-300" data-pct="25">25%</button>
+          <button class="btn-pct py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[9px] font-mono text-slate-300" data-pct="50">50%</button>
+          <button class="btn-pct py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[9px] font-mono text-slate-300" data-pct="75">75%</button>
+          <button class="btn-pct py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[9px] font-mono text-slate-300" data-pct="100">100%</button>
+        </div>
+      </div>
+
+      <!-- Leverage Selector -->
+      <div>
+        <label class="text-[10px] text-slate-400 mb-1 block">Leverage Multiplier</label>
+        <div class="grid grid-cols-4 gap-1">
+          <button class="btn-lev py-1 bg-blue-600 text-white rounded text-[10px] font-bold" data-lev="1">1x</button>
+          <button class="btn-lev py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold" data-lev="2">2x</button>
+          <button class="btn-lev py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold" data-lev="5">5x</button>
+          <button class="btn-lev py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold" data-lev="10">10x</button>
+        </div>
+      </div>
+
+      <!-- Risk Management Inputs -->
+      <div class="space-y-1.5 border-t border-slate-800 pt-2">
+        <div>
+          <label class="text-[9px] text-slate-400 block">Stop Loss ($)</label>
+          <input type="number" id="inputStopLoss" step="any" placeholder="Optional" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-0.5 font-mono text-white text-[11px]">
+        </div>
+        <div>
+          <label class="text-[9px] text-slate-400 block">Take Profit ($)</label>
+          <input type="number" id="inputTakeProfit" step="any" placeholder="Optional" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-0.5 font-mono text-white text-[11px]">
+        </div>
+        <div>
+          <label class="text-[9px] text-slate-400 block">Trailing Stop ($ Offset)</label>
+          <input type="number" id="inputTrailingStop" step="any" placeholder="Optional" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-0.5 font-mono text-white text-[11px]">
+        </div>
+      </div>
+
+      <!-- Execute Action Buttons -->
+      <div class="grid grid-cols-2 gap-2 mt-auto">
+        <button id="btnBuy" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-xs tracking-wider transition">BUY [B]</button>
+        <button id="btnSell" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded text-xs tracking-wider transition">SELL [S]</button>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- JAVASCRIPT GAME ENGINE -->
+  <script>
+    function refreshIcons() {
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
+
+    // --- GAME STATE ---
+    const state = {
+      cash: 25000.00,
+      startingEquity: 25000.00,
+      portfolioValue: 25000.00,
+      dayPnL: 0.00,
+      selectedSymbol: 'TECH',
+      category: 'ALL',
+      orderType: 'MARKET',
+      selectedLeverage: 1,
+      speed: 1,
+      isPaused: false,
+      day: 1,
+      clockMinutes: 570, // 09:30 AM in minutes from midnight
+      indicators: { ema9: true, ema21: true, sma50: true, vwap: true, bollinger: true },
+      positions: [],
+      pendingOrders: [],
+      history: [],
+      news: []
+    };
+
+    // --- ASSETS DATABASE ---
+    const assets = {
+      TECH: { name: 'MegaTech Corp', category: 'STOCKS', price: 150.00, spread: 0.04, history: [], volatility: 0.0015 },
+      EVOL: { name: 'EV Motors Inc', category: 'STOCKS', price: 45.00, spread: 0.03, history: [], volatility: 0.0035 },
+      INDEX: { name: 'S&P 500 ETF', category: 'STOCKS', price: 420.00, spread: 0.05, history: [], volatility: 0.0006 },
+      CRYP: { name: 'BitCoin Alpha', category: 'CRYPTO', price: 35000.00, spread: 12.00, history: [], volatility: 0.0050 },
+      'SOL-USD': { name: 'Solana Protocol', category: 'CRYPTO', price: 110.00, spread: 0.15, history: [], volatility: 0.0065 },
+      'DOGE-X': { name: 'Dogecoin', category: 'MEME', price: 0.15, spread: 0.0008, history: [], volatility: 0.0120 },
+      'PEPE-X': { name: 'Pepe Coin', category: 'MEME', price: 0.0000085, spread: 0.0000001, history: [], volatility: 0.0180 },
+      'WIF-X': { name: 'DogWifHat', category: 'MEME', price: 2.40, spread: 0.02, history: [], volatility: 0.0150 },
+      'MOON-PUMP': { name: 'RocketMoon', category: 'MEME', price: 0.05, spread: 0.0010, history: [], volatility: 0.0250 }
+    };
+
+    // Initialize Bar History
+    Object.keys(assets).forEach(sym => {
+      let p = assets[sym].price;
+      let cumVolP = 0, cumVol = 0;
+      for (let i = 0; i < 60; i++) {
+        let change = p * (Math.random() - 0.495) * assets[sym].volatility;
+        let open = p;
+        let close = Math.max(0.0000001, p + change);
+        let high = Math.max(open, close) + Math.abs(change) * Math.random();
+        let low = Math.min(open, close) - Math.abs(change) * Math.random();
+        let volume = Math.floor(Math.random() * 5000) + 1000;
+        cumVolP += ((open + high + low + close) / 4) * volume;
+        cumVol += volume;
+        
+        assets[sym].history.push({ open, high, low, close, volume, vwap: cumVolP / cumVol });
+        p = close;
+      }
+      assets[sym].price = p;
+    });
+
+    // --- AUDIO SYNTHESIZER ---
+    function playAudio(type) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'buy') {
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        } else if (type === 'sell') {
+          osc.frequency.setValueAtTime(600, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.15);
+        } else if (type === 'shock') {
+          osc.frequency.setValueAtTime(150, ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(40, ctx.currentTime + 0.3);
+        } else if (type === 'news') {
+          osc.frequency.setValueAtTime(800, ctx.currentTime);
+          osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.1);
+        }
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {}
+    }
+
+    // --- NEWS & VOLATILITY SHOCKS ---
+    const NEWS_EVENTS = [
+      { sym: 'TECH', text: 'Announces breakthrough AI quantum chip.', shock: 0.12 },
+      { sym: 'EVOL', text: 'Faces recall notice over battery module.', shock: -0.15 },
+      { sym: 'CRYP', text: 'Institutional ETF inflows reach record high.', shock: 0.10 },
+      { sym: 'DOGE-X', text: 'Viral celebrity tweet triggers massive rally!', shock: 0.40 },
+      { sym: 'PEPE-X', text: 'Whale transfers millions of tokens to exchange.', shock: -0.30 },
+      { sym: 'MOON-PUMP', text: '🔥 ROCKET MOON SHOCK: Massive pump underway!', shock: 0.75 },
+      { sym: 'WIF-X', text: 'FLASH CRASH: Liquidation cascade in progress!', shock: -0.45 }
+    ];
+
+    function triggerMarketEvent() {
+      const item = NEWS_EVENTS[Math.floor(Math.random() * NEWS_EVENTS.length)];
+      const a = assets[item.sym];
+      a.price = Math.max(0.0000001, a.price * (1 + item.shock));
+      
+      state.news.unshift({
+        time: formatClock(state.clockMinutes),
+        text: `[${item.sym}] ${item.text}`,
+        type: item.shock > 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'
+      });
+
+      playAudio('shock');
+      renderNewsTab();
+    }
+
+    // --- HELPERS ---
+    function formatClock(mins) {
+      let h = Math.floor(mins / 60);
+      let m = mins % 60;
+      let ampm = h >= 12 ? 'PM' : 'AM';
+      let displayH = h % 12 === 0 ? 12 : h % 12;
+      return `${displayH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
+    }
+
+    function formatPrice(p) {
+      if (p < 0.001) return p.toFixed(8);
+      if (p < 1) return p.toFixed(4);
+      return p.toFixed(2);
+    }
+
+    // --- TECHNICAL INDICATORS CALCULATIONS ---
+    function calculateRSI(bars, period = 14) {
+      if (bars.length < period + 1) return Array(bars.length).fill(50);
+      let gains = 0, losses = 0;
+      for (let i = 1; i <= period; i++) {
+        let diff = bars[i].close - bars[i - 1].close;
+        if (diff >= 0) gains += diff; else losses -= diff;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+      let rsi = [50];
+
+      for (let i = period + 1; i < bars.length; i++) {
+        let diff = bars[i].close - bars[i - 1].close;
+        let gain = diff >= 0 ? diff : 0;
+        let loss = diff < 0 ? -diff : 0;
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+        let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        rsi.push(100 - (100 / (1 + rs)));
+      }
+      while (rsi.length < bars.length) rsi.unshift(50);
+      return rsi;
+    }
+
+    // --- HEADER STATS & MARGIN CALLS ---
+    function updateHeaderStats() {
+      let openPnL = 0;
+      let usedMargin = 0;
+
+      state.positions.forEach(pos => {
+        const a = assets[pos.symbol];
+        const curPrice = pos.side === 'LONG' ? (a.price - a.spread / 2) : (a.price + a.spread / 2);
+        const diff = pos.side === 'LONG' ? (curPrice - pos.entry) : (pos.entry - curPrice);
+        openPnL += diff * pos.qty * pos.leverage;
+        usedMargin += (pos.qty * pos.entry) / pos.leverage;
+      });
+
+      state.portfolioValue = state.cash + openPnL;
+      state.dayPnL = state.portfolioValue - state.startingEquity;
+
+      // Margin Health Calculation
+      const maintMarginReq = usedMargin * 0.25;
+      const marginHealth = usedMargin === 0 ? 100 : Math.max(0, Math.min(100, ((state.portfolioValue - maintMarginReq) / usedMargin) * 100));
+
+      // Auto Margin Liquidation check
+      if (usedMargin > 0 && marginHealth <= 0) {
+        flattenAllPositions('MARGIN CALL LIQUIDATION');
+      }
+
+      document.getElementById('statDay').textContent = state.day;
+      document.getElementById('statClock').textContent = formatClock(state.clockMinutes);
+      document.getElementById('statPortfolio').textContent = `$${state.portfolioValue.toFixed(2)}`;
+      document.getElementById('statCash').textContent = `$${state.cash.toFixed(2)}`;
+      document.getElementById('statBuyingPower').textContent = `$${(state.cash * state.selectedLeverage).toFixed(2)}`;
+      
+      const elHealth = document.getElementById('statMarginHealth');
+      elHealth.textContent = `${marginHealth.toFixed(0)}%`;
+      elHealth.className = `font-semibold ml-1 ${marginHealth < 30 ? 'text-rose-500 animate-pulse' : marginHealth < 60 ? 'text-amber-400' : 'text-emerald-400'}`;
+
+      const elPnL = document.getElementById('statDayPnL');
+      const pct = ((state.dayPnL / state.startingEquity) * 100).toFixed(2);
+      elPnL.textContent = `${state.dayPnL >= 0 ? '+' : ''}$${state.dayPnL.toFixed(2)} (${pct}%)`;
+      elPnL.className = `font-semibold ml-1 ${state.dayPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    // --- WATCHLIST & ACTIVE HEADER ---
+    function renderWatchlist() {
+      const container = document.getElementById('watchlistContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      Object.keys(assets).forEach(sym => {
+        const a = assets[sym];
+        if (state.category !== 'ALL' && a.category !== state.category) return;
+
+        const firstP = a.history[0].open;
+        const pct = (((a.price - firstP) / firstP) * 100).toFixed(2);
+        const isSelected = sym === state.selectedSymbol;
+
+        const div = document.createElement('div');
+        div.className = `p-2 flex items-center justify-between cursor-pointer border-l-2 transition ${isSelected ? 'bg-slate-800/80 border-blue-500' : 'border-transparent hover:bg-slate-800/40'}`;
+        div.onclick = () => { state.selectedSymbol = sym; renderWatchlist(); updateActiveHeader(); };
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-200 text-xs">${sym}</div>
+            <div class="text-[9px] text-slate-500 truncate w-20">${a.name}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-mono text-xs text-white">$${formatPrice(a.price)}</div>
+            <div class="font-mono text-[9px] ${pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${pct >= 0 ? '+' : ''}${pct}%</div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateActiveHeader() {
+      const a = assets[state.selectedSymbol];
+      const firstP = a.history[0].open;
+      const pct = (((a.price - firstP) / firstP) * 100).toFixed(2);
+      const bid = a.price - a.spread / 2;
+      const ask = a.price + a.spread / 2;
+
+      document.getElementById('chartSymbol').textContent = state.selectedSymbol;
+      document.getElementById('chartName').textContent = a.name;
+      document.getElementById('chartPrice').textContent = `$${formatPrice(a.price)}`;
+      document.getElementById('chartBidAsk').textContent = `B: ${formatPrice(bid)} / A: ${formatPrice(ask)}`;
+      
+      const elChg = document.getElementById('chartChange');
+      elChg.textContent = `${pct >= 0 ? '+' : ''}${pct}%`;
+      elChg.className = `font-mono text-[11px] ${pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    // --- CANVAS CHART RENDER ENGINE ---
+    function renderChart() {
+      const canvas = document.getElementById('chartCanvas');
+      const rsiCanvas = document.getElementById('rsiCanvas');
+      if (!canvas || !rsiCanvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      const rsiCtx = rsiCanvas.getContext('2d');
+      
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+      rsiCanvas.width = rsiCanvas.parentElement.clientWidth;
+      rsiCanvas.height = rsiCanvas.parentElement.clientHeight;
+
+      const bars = assets[state.selectedSymbol].history;
+      if (!bars.length) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      rsiCtx.clearRect(0, 0, rsiCanvas.width, rsiCanvas.height);
+
+      let minP = Math.min(...bars.map(b => b.low));
+      let maxP = Math.max(...bars.map(b => b.high));
+      const pad = (maxP - minP) * 0.1 || 0.01;
+      minP -= pad; maxP += pad;
+
+      const barWidth = canvas.width / bars.length;
+
+      // Main Chart Grid
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        let y = (canvas.height / 5) * i;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // Draw Candlesticks
+      bars.forEach((b, i) => {
+        const x = i * barWidth + barWidth / 2;
+        const getY = (p) => canvas.height - ((p - minP) / (maxP - minP)) * canvas.height;
+
+        const openY = getY(b.open);
+        const closeY = getY(b.close);
+        const highY = getY(b.high);
+        const lowY = getY(b.low);
+
+        const isGreen = b.close >= b.open;
+        ctx.strokeStyle = isGreen ? '#10b981' : '#f43f5e';
+        ctx.fillStyle = isGreen ? '#10b981' : '#f43f5e';
+
+        ctx.beginPath(); ctx.moveTo(x, highY); ctx.lineTo(x, lowY); ctx.stroke();
+        const top = Math.min(openY, closeY);
+        const height = Math.max(Math.abs(closeY - openY), 2);
+        ctx.fillRect(x - barWidth * 0.35, top, barWidth * 0.7, height);
+      });
+
+      // Indicators
+      function drawLine(calcFn, color, dash = []) {
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash(dash); ctx.beginPath();
+        bars.forEach((b, i) => {
+          const val = calcFn(i);
+          const x = i * barWidth + barWidth / 2;
+          const y = canvas.height - ((val - minP) / (maxP - minP)) * canvas.height;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      // EMA 9 / 21 & SMA 50
+      if (state.indicators.ema9) {
+        let k = 2 / (9 + 1), ema = bars[0].close;
+        drawLine((i) => { ema = bars[i].close * k + ema * (1 - k); return ema; }, '#f59e0b');
+      }
+      if (state.indicators.ema21) {
+        let k = 2 / (21 + 1), ema = bars[0].close;
+        drawLine((i) => { ema = bars[i].close * k + ema * (1 - k); return ema; }, '#06b6d4');
+      }
+      if (state.indicators.vwap) {
+        drawLine((i) => bars[i].vwap, '#14b8a6', [2, 2]);
+      }
+
+      // RSI Subchart Render
+      const rsiVals = calculateRSI(bars, 14);
+      rsiCtx.strokeStyle = '#38bdf8'; rsiCtx.lineWidth = 1.5; rsiCtx.beginPath();
+      rsiVals.forEach((v, i) => {
+        const x = i * barWidth + barWidth / 2;
+        const y = rsiCanvas.height - (v / 100) * rsiCanvas.height;
+        if (i === 0) rsiCtx.moveTo(x, y); else rsiCtx.lineTo(x, y);
+      });
+      rsiCtx.stroke();
+
+      // RSI Overbought/Oversold lines (70 / 30)
+      rsiCtx.strokeStyle = '#f43f5e'; rsiCtx.setLineDash([2, 2]);
+      rsiCtx.beginPath(); rsiCtx.moveTo(0, rsiCanvas.height * 0.3); rsiCtx.lineTo(rsiCanvas.width, rsiCanvas.height * 0.3); rsiCtx.stroke();
+      rsiCtx.strokeStyle = '#10b981';
+      rsiCtx.beginPath(); rsiCtx.moveTo(0, rsiCanvas.height * 0.7); rsiCtx.lineTo(rsiCanvas.width, rsiCanvas.height * 0.7); rsiCtx.stroke();
+    }
+
+    // --- MARKET TICK SIMULATION ---
+    function tick() {
+      if (state.isPaused) return;
+
+      // Clock Increment
+      state.clockMinutes += 1;
+      if (state.clockMinutes >= 960) { // 04:00 PM
+        state.day += 1;
+        state.clockMinutes = 570; // Reset to 09:30 AM
+        state.news.unshift({
+          time: '09:30 AM',
+          text: `🌅 DAY ${state.day} MARKET OPEN - Continuous trading session active.`,
+          type: 'text-blue-400 font-bold'
+        });
+        renderNewsTab();
+      }
+
+      // Price Action Ticks
+      Object.keys(assets).forEach(sym => {
+        const a = assets[sym];
+        const change = a.price * (Math.random() - 0.495) * a.volatility;
+        a.price = Math.max(0.0000001, a.price + change);
+
+        const currentBar = a.history[a.history.length - 1];
+        currentBar.close = a.price;
+        currentBar.high = Math.max(currentBar.high, a.price);
+        currentBar.low = Math.min(currentBar.low, a.price);
+
+        checkPendingOrders(sym);
+      });
+
+      // Random Market Shocks (3% chance per tick)
+      if (Math.random() < 0.03) triggerMarketEvent();
+
+      updateHeaderStats();
+      updateActiveHeader();
+      renderWatchlist();
+      renderChart();
+      renderPositions();
+    }
+
+    // --- TRADING EXECUTION ENGINE ---
+    function checkPendingOrders(sym) {
+      state.pendingOrders = state.pendingOrders.filter(ord => {
+        if (ord.symbol !== sym) return true;
+        const curPrice = assets[sym].price;
+        const triggered = ord.side === 'LONG' ? curPrice <= ord.targetPrice : curPrice >= ord.targetPrice;
+        
+        if (triggered) {
+          executePosition(ord.symbol, ord.side, ord.qty, curPrice, ord.leverage);
+          return false;
+        }
+        return true;
+      });
+      renderPendingTab();
+    }
+
+    function executePosition(symbol, side, qty, price, leverage) {
+      const a = assets[symbol];
+      const fillPrice = side === 'LONG' ? (price + a.spread / 2) : (price - a.spread / 2);
+      const cost = (qty * fillPrice) / leverage;
+
+      if (cost > state.cash) {
+        alert('Insufficient cash or buying power!');
+        return;
+      }
+
+      state.cash -= cost;
+      state.positions.push({
+        id: Date.now(),
+        symbol,
+        side,
+        qty,
+        entry: fillPrice,
+        leverage,
+        highestMark: fillPrice,
+        lowestMark: fillPrice,
+        stopLoss: parseFloat(document.getElementById('inputStopLoss').value) || null,
+        takeProfit: parseFloat(document.getElementById('inputTakeProfit').value) || null,
+        trailingStop: parseFloat(document.getElementById('inputTrailingStop').value) || null
+      });
+
+      playAudio(side === 'LONG' ? 'buy' : 'sell');
+      renderPositions();
+    }
+
+    function closePosition(id) {
+      const idx = state.positions.findIndex(p => p.id === id);
+      if (idx === -1) return;
+
+      const pos = state.positions[idx];
+      const a = assets[pos.symbol];
+      const closePrice = pos.side === 'LONG' ? (a.price - a.spread / 2) : (a.price + a.spread / 2);
+      const diff = pos.side === 'LONG' ? (closePrice - pos.entry) : (pos.entry - closePrice);
+      const profit = diff * pos.qty * pos.leverage;
+
+      const returnedMargin = (pos.qty * pos.entry) / pos.leverage;
+      state.cash += returnedMargin + profit;
+
+      state.history.unshift({
+        time: formatClock(state.clockMinutes),
+        symbol: pos.symbol,
+        side: pos.side,
+        price: closePrice,
+        qty: pos.qty,
+        pnl: profit
+      });
+
+      state.positions.splice(idx, 1);
+      renderPositions();
+      renderHistoryTab();
+    }
+
+    function flattenAllPositions(reason = 'FLATTEN ALL') {
+      const copy = [...state.positions];
+      copy.forEach(pos => closePosition(pos.id));
+      if (reason !== 'FLATTEN ALL') {
+        state.news.unshift({
+          time: formatClock(state.clockMinutes),
+          text: `⚠️ ${reason}: All positions were auto-closed.`,
+          type: 'text-rose-400 font-bold'
+        });
+        renderNewsTab();
+      }
+    }
+
+    // --- DASHBOARD RENDERERS ---
+    function renderPositions() {
+      const tbody = document.getElementById('positionsTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      document.getElementById('posCount').textContent = state.positions.length;
+
+      state.positions.forEach(pos => {
+        const a = assets[pos.symbol];
+        const curPrice = pos.side === 'LONG' ? (a.price - a.spread / 2) : (a.price + a.spread / 2);
+        const diff = pos.side === 'LONG' ? (curPrice - pos.entry) : (pos.entry - curPrice);
+        const profit = diff * pos.qty * pos.leverage;
+
+        // Trailing Stop & SL/TP Evaluation
+        pos.highestMark = Math.max(pos.highestMark, curPrice);
+        pos.lowestMark = Math.min(pos.lowestMark, curPrice);
+
+        if (pos.stopLoss && ((pos.side === 'LONG' && curPrice <= pos.stopLoss) || (pos.side === 'SHORT' && curPrice >= pos.stopLoss))) {
+          closePosition(pos.id); return;
+        }
+        if (pos.takeProfit && ((pos.side === 'LONG' && curPrice >= pos.takeProfit) || (pos.side === 'SHORT' && curPrice <= pos.takeProfit))) {
+          closePosition(pos.id); return;
+        }
+        if (pos.trailingStop) {
+          if (pos.side === 'LONG' && (pos.highestMark - curPrice >= pos.trailingStop)) { closePosition(pos.id); return; }
+          if (pos.side === 'SHORT' && (curPrice - pos.lowestMark >= pos.trailingStop)) { closePosition(pos.id); return; }
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/50 hover:bg-slate-800/30';
+        tr.innerHTML = `
+          <td class="p-1 font-bold text-white">${pos.symbol}</td>
+          <td class="p-1 ${pos.side === 'LONG' ? 'text-emerald-400' : 'text-rose-400'}">${pos.side} ${pos.leverage}x</td>
+          <td class="p-1">${pos.qty}</td>
+          <td class="p-1">$${formatPrice(pos.entry)}</td>
+          <td class="p-1">$${formatPrice(curPrice)}</td>
+          <td class="p-1 font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</td>
+          <td class="p-1 text-[10px] text-slate-400">${pos.stopLoss ? 'SL:' + formatPrice(pos.stopLoss) : ''} ${pos.takeProfit ? 'TP:' + formatPrice(pos.takeProfit) : ''}</td>
+          <td class="p-1"><button onclick="closePosition(${pos.id})" class="px-2 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[9px]">CLOSE</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderPendingTab() {
+      const tbody = document.getElementById('pendingTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      document.getElementById('pendingCount').textContent = state.pendingOrders.length;
+
+      state.pendingOrders.forEach((ord, i) => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/50';
+        tr.innerHTML = `
+          <td class="p-1 font-bold text-white">${ord.symbol}</td>
+          <td class="p-1">${ord.side}</td>
+          <td class="p-1">$${formatPrice(ord.targetPrice)}</td>
+          <td class="p-1">${ord.qty}</td>
+          <td class="p-1"><button onclick="state.pendingOrders.splice(${i},1); renderPendingTab();" class="text-rose-400 hover:underline">Cancel</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderHistoryTab() {
+      const tbody = document.getElementById('historyTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      state.history.forEach(h => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-800/50 text-[10px]';
+        tr.innerHTML = `
+          <td class="p-1 text-slate-500">${h.time}</td>
+          <td class="p-1 font-bold text-white">${h.symbol}</td>
+          <td class="p-1 ${h.side === 'LONG' ? 'text-emerald-400' : 'text-rose-400'}">${h.side}</td>
+          <td class="p-1">$${formatPrice(h.price)}</td>
+          <td class="p-1">${h.qty}</td>
+          <td class="p-1 font-bold ${h.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${h.pnl >= 0 ? '+' : ''}$${h.pnl.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderNewsTab() {
+      const container = document.getElementById('tab-news');
+      if (!container) return;
+      container.innerHTML = '';
+
+      state.news.forEach(n => {
+        const div = document.createElement('div');
+        div.className = `p-1 rounded bg-slate-950 border border-slate-800 ${n.type}`;
+        div.textContent = `${n.time} - ${n.text}`;
+        container.appendChild(div);
+      });
+    }
+
+    // --- EVENT LISTENERS & INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Sidebar Toggles
+      document.getElementById('toggleLeftSidebar').onclick = () => document.getElementById('leftSidebar').classList.toggle('hidden');
+      document.getElementById('toggleRightSidebar').onclick = () => document.getElementById('rightSidebar').classList.toggle('hidden');
+
+      // Category Tabs
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.cat-btn').forEach(b => b.className = 'cat-btn py-1 rounded text-center text-slate-400');
+          btn.className = 'cat-btn cat-active py-1 rounded text-center text-slate-300';
+          state.category = btn.getAttribute('data-cat');
+          renderWatchlist();
+        };
+      });
+
+      // Indicator Toggles
+      document.getElementById('btnEma9').onclick = (e) => { state.indicators.ema9 = !state.indicators.ema9; e.target.classList.toggle('opacity-40'); };
+      document.getElementById('btnEma21').onclick = (e) => { state.indicators.ema21 = !state.indicators.ema21; e.target.classList.toggle('opacity-40'); };
+      document.getElementById('btnSma50').onclick = (e) => { state.indicators.sma50 = !state.indicators.sma50; e.target.classList.toggle('opacity-40'); };
+      document.getElementById('btnVwap').onclick = (e) => { state.indicators.vwap = !state.indicators.vwap; e.target.classList.toggle('opacity-40'); };
+
+      // Dashboard Tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active', 'text-slate-400'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+          btn.classList.add('tab-active');
+          const target = btn.getAttribute('data-tab');
+          document.getElementById(`tab-${target}`).classList.remove('hidden');
+        };
+      });
+
+      // Quick Qty %
+      document.querySelectorAll('.btn-pct').forEach(btn => {
+        btn.onclick = () => {
+          const pct = parseInt(btn.getAttribute('data-pct')) / 100;
+          const curPrice = assets[state.selectedSymbol].price;
+          const maxShares = Math.floor((state.cash * state.selectedLeverage * pct) / curPrice);
+          document.getElementById('inputQty').value = Math.max(1, maxShares);
+        };
+      });
+
+      // Leverage Selection
+      document.querySelectorAll('.btn-lev').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.btn-lev').forEach(b => b.className = 'btn-lev py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold');
+          btn.className = 'btn-lev py-1 bg-blue-600 text-white rounded text-[10px] font-bold';
+          state.selectedLeverage = parseInt(btn.getAttribute('data-lev'));
+          updateHeaderStats();
+        };
+      });
+
+      // Order Type Switch
+      document.getElementById('btnOrderMarket').onclick = () => {
+        state.orderType = 'MARKET';
+        document.getElementById('btnOrderMarket').className = 'py-1 rounded bg-slate-800 text-white text-[10px] font-semibold';
+        document.getElementById('btnOrderLimit').className = 'py-1 rounded text-slate-400 text-[10px] font-semibold';
+        document.getElementById('limitPriceContainer').classList.add('hidden');
+      };
+      document.getElementById('btnOrderLimit').onclick = () => {
+        state.orderType = 'LIMIT';
+        document.getElementById('btnOrderLimit').className = 'py-1 rounded bg-slate-800 text-white text-[10px] font-semibold';
+        document.getElementById('btnOrderMarket').className = 'py-1 rounded text-slate-400 text-[10px] font-semibold';
+        document.getElementById('limitPriceContainer').classList.remove('hidden');
+        document.getElementById('inputLimitPrice').value = formatPrice(assets[state.selectedSymbol].price);
+      };
+
+      // Execution & Hotkeys
+      document.getElementById('btnBuy').onclick = () => placeOrder('LONG');
+      document.getElementById('btnSell').onclick = () => placeOrder('SHORT');
+      document.getElementById('btnFlattenAll').onclick = () => flattenAllPositions();
+
+      document.getElementById('btnPause').onclick = () => {
+        state.isPaused = !state.isPaused;
+        document.getElementById('btnPause').textContent = state.isPaused ? 'Resume [P]' : 'Pause [P]';
+      };
+
+      function placeOrder(side) {
+        const qty = parseInt(document.getElementById('inputQty').value) || 1;
+        const curPrice = assets[state.selectedSymbol].price;
+
+        if (state.orderType === 'MARKET') {
+          executePosition(state.selectedSymbol, side, qty, curPrice, state.selectedLeverage);
+        } else {
+          const limitP = parseFloat(document.getElementById('inputLimitPrice').value) || curPrice;
+          state.pendingOrders.push({
+            symbol: state.selectedSymbol, side, qty, targetPrice: limitP, leverage: state.selectedLeverage
+          });
+          renderPendingTab();
+        }
+      }
+
+      // Keyboard Hotkeys Listener
+      window.addEventListener('keydown', (e) => {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+        if (e.key === 'b' || e.key === 'B') placeOrder('LONG');
+        if (e.key === 's' || e.key === 'S') placeOrder('SHORT');
+        if (e.key === ' ') { e.preventDefault(); flattenAllPositions(); }
+        if (e.key === 'p' || e.key === 'P') document.getElementById('btnPause').click();
+      });
+
+      refreshIcons();
+      renderWatchlist();
+      updateActiveHeader();
+      setInterval(tick, 1000);
+    });
+  </script>
+</body>
+</html>
+
+```
